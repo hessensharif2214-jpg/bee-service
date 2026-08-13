@@ -1,0 +1,1464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bee Project · Offline Font Sync</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0c0c0a">
+    <!-- Extra Bold Arabic Google Fonts import -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@900&family=Changa:wght@800;900&family=El+Messiri:wght@700&family=Lalezar&family=Noto+Sans+Arabic:wght@800;900&family=Tajawal:wght@900&family=Vazirmatn:wght@900&display=swap" rel="stylesheet">
+    <style>
+        /* Base64 / Local Fallback declaration for GE Dinar One Bold (Offline Safe) */
+        @font-face {
+            font-family: 'GE Dinar One';
+            src: local('GE Dinar One Bold'), local('GEDinarOne-Bold'), url('GE-Dinar-One-Bold.ttf') format('truetype');
+            font-weight: bold;
+            font-style: normal;
+        }
+
+        /* Offline Local Font fallbacks for new Arabic fonts */
+        @font-face {
+            font-family: 'Al Majeed Quranic Font';
+            src: local('Al Majeed Quranic Font'), local('AlMajeedQuranicFont');
+            font-style: normal;
+        }
+        @font-face {
+            font-family: 'Guesswhat Exceptional';
+            src: local('Guesswhat Exceptional'), local('GuesswhatExceptional');
+            font-style: normal;
+        }
+        @font-face {
+            font-family: 'Aa Typo round Point';
+            src: local('Aa Typo round Point'), local('AaTyporoundPoint');
+            font-style: normal;
+        }
+        @font-face {
+            font-family: 'Aa Typo squared Point';
+            src: local('Aa Typo squared Point'), local('AaTyposquaredPoint');
+            font-style: normal;
+        }
+
+        /* Modern Studio Theme Variables - Adjusted for Bee Logo Branding */
+        :root {
+            --bg-base: #0c0c0a;
+            --bg-surface: #161612;
+            --bg-control: #24241d;
+            --bg-control-hover: #333329;
+            --accent: #FFCC00; /* Bee Yellow */
+            --accent-glow: rgba(255, 204, 0, 0.25);
+            --text-main: #f5f5f0;
+            --text-muted: #9c9c8e;
+            --text-blue: #ffdb4d;
+            --border: rgba(255, 204, 0, 0.08);
+            --radius-lg: 16px;
+            --radius-md: 12px;
+        }
+
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg-base);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            height: -webkit-fill-available;
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Main Workspace Viewport */
+        #workspace {
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle, #1c1c14 0%, #060605 100%);
+            padding: 16px;
+            overflow: auto;
+            position: relative;
+            min-height: 40vh;
+        }
+
+        /* Interactive Canvas System */
+        .canvas-container {
+            position: relative;
+            border-radius: 8px;
+            overflow: visible;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+            max-width: 100%;
+            max-height: 100%;
+            will-change: transform;
+        }
+        
+        canvas {
+            display: block;
+            max-width: 100%;
+            max-height: 55vh;
+            background: #0d0d0b;
+            object-fit: contain;
+        }
+
+        /* Responsive UI Mobile Control Panel */
+        #sidebar {
+            width: 100%;
+            height: 50vh;
+            background: var(--bg-surface);
+            border-top: 1px solid var(--border);
+            border-left: none;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            overflow-y: auto;
+            box-sizing: border-box;
+            border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+            box-shadow: 0 -8px 24px rgba(0,0,0,0.4);
+            z-index: 10;
+        }
+
+        /* Branding Header Component */
+        .brand-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 12px;
+        }
+
+        .app-logo {
+            display: block;
+            max-width: 44px;
+            height: auto;
+            filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.5));
+        }
+
+        .brand-text {
+            flex-grow: 1;
+        }
+
+        h2 {
+            margin: 0 0 2px 0;
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, #fff 0%, var(--text-muted) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .section-card {
+            background: rgba(255, 204, 0, 0.01);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        h3 {
+            margin: 0;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+        }
+
+        /* Enhanced Touch Targets for Mobile Controls */
+        button, select, input[type="text"], input[type="number"], input[type="range"] {
+            background: var(--bg-control);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 12px 14px;
+            border-radius: var(--radius-md);
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+            width: 100%;
+            box-sizing: border-box;
+            outline: none;
+            min-height: 44px;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Ensure input accepts and correctly previews Arabic typography on Android */
+        input[type="text"] {
+            dir: auto;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        input[type="range"] {
+            padding: 0;
+            height: 12px;
+            background: var(--bg-control);
+            border: none;
+            cursor: pointer;
+        }
+
+        button:active, select:active {
+            background: var(--bg-control-hover);
+            transform: scale(0.98);
+        }
+
+        input[type="text"]:focus, input[type="number"]:focus, select:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        button.primary {
+            background: var(--accent);
+            border: none;
+            font-weight: 600;
+            color: #111;
+        }
+        button.primary:active {
+            background: #e6b800;
+        }
+
+        button.secondary {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .row { display: flex; gap: 10px; }
+        .row > * { flex: 1; }
+
+        /* Custom File Input wrapper styling */
+        .file-btn {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            text-align: center;
+            width: 100%;
+        }
+        .file-btn input[type=file] {
+            position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; height: 100%; width: 100%;
+        }
+
+        /* Layer List Interface */
+        #layersList {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 160px;
+            overflow-y: auto;
+        }
+
+        .layer-item {
+            background: var(--bg-control);
+            border: 1px solid var(--border);
+            padding: 12px;
+            border-radius: var(--radius-md);
+            font-size: 0.9rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            min-height: 46px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .layer-item.active {
+            background: rgba(255, 204, 0, 0.06);
+            border-color: var(--accent);
+        }
+
+        .layer-ref {
+            background: rgba(255, 204, 0, 0.1);
+            color: var(--text-blue);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 700;
+            font-family: monospace;
+            margin-right: 8px;
+        }
+
+        .delete-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            width: auto;
+            min-height: auto;
+            padding: 6px 10px;
+            border-radius: 6px;
+        }
+        .delete-btn:active {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        /* WYSIWYG Modern Text Component Rendering Engine */
+        .text-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            cursor: grab;
+            user-select: none;
+            -webkit-user-select: none;
+            white-space: nowrap;
+            padding: 0px 0px; 
+            border: 1px dashed transparent;
+            border-radius: 0px;
+            transform-origin: top left;
+            touch-action: none; /* Prevents viewport scrolling during drag on Android */
+            will-change: transform; /* Hardware acceleration hint for GPU */
+        }
+        .text-layer:active {
+            cursor: grabbing;
+        }
+        .text-layer.active {
+            border-color: var(--accent);
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        body.dragging-active .text-layer {
+            cursor: grabbing !important;
+        }
+
+        .hint {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        /* Color Input Custom UI styling overrides */
+        input[type="color"] {
+            -webkit-appearance: none;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            width: 100%;
+            height: 46px;
+            padding: 0;
+            background: transparent;
+            cursor: pointer;
+        }
+        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        input[type="color"]::-webkit-color-swatch { border: none; border-radius: var(--radius-md); }
+
+        /* --- Nudge Control Pad Design Style --- */
+        .nudge-pad {
+            background: #c2c2c2;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 15px 0 0 0;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .nudge-dpad {
+            position: relative;
+            width: 160px;
+            height: 140px;
+            margin-bottom: 10px;
+        }
+
+        .nudge-btn {
+            position: absolute;
+            background: #ffffff;
+            border: none;
+            width: 44px;
+            height: 44px;
+            padding: 0;
+            min-height: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+            transition: transform 0.1s, background-color 0.1s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .nudge-btn:active {
+            background: #eeeeee;
+            transform: scale(0.92);
+        }
+        .nudge-btn svg {
+            fill: #707070;
+            width: 24px;
+            height: 24px;
+        }
+
+        .nudge-up    { top: 5px;   left: 58px;  clip-path: polygon(50% 0%, 0% 100%, 100% 100%); }
+        .nudge-left  { top: 48px;  left: 10px;  clip-path: polygon(100% 0, 0% 50%, 100% 100%); }
+        .nudge-right { top: 48px;  left: 106px; clip-path: polygon(0 0, 0% 100%, 100% 50%); }
+        .nudge-down  { top: 91px;  left: 58px;  clip-path: polygon(0 0, 100% 0, 50% 100%); }
+
+        .nudge-spacing-bar {
+            width: 100%;
+            background: #3a3a3a;
+            display: flex;
+            border-top: 1px solid rgba(0,0,0,0.2);
+        }
+
+        .spacing-control-unit {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px;
+            gap: 4px;
+            border-right: 1px solid #4a4a4a;
+        }
+        .spacing-control-unit:last-child {
+            border-right: none;
+        }
+
+        .spacing-action-btn {
+            background: transparent;
+            border: none;
+            color: #ffffff;
+            font-size: 1.2rem;
+            font-weight: bold;
+            width: 32px;
+            height: 32px;
+            min-height: auto;
+            padding: 0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .spacing-action-btn:active {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .spacing-label-icon {
+            color: #ffffff;
+            font-weight: bold;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* extra helper for select all button */
+        .select-all-btn {
+            background: var(--bg-control);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 8px 12px;
+            border-radius: var(--radius-md);
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: 0.2s;
+            min-height: 36px;
+            flex: 0 0 auto;
+            width: auto;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .select-all-btn:active {
+            background: var(--bg-control-hover);
+            transform: scale(0.96);
+        }
+
+        /* Desktop Viewport Layout adaptation */
+        @media (min-width: 768px) {
+            body { flex-direction: row; }
+            #sidebar { width: 360px; height: 100vh; border-top: none; border-right: 1px solid var(--border); border-radius: 0; }
+            canvas { max-height: 80vh; max-width: 75vw; }
+            #workspace { min-height: auto; padding: 40px; }
+        }
+
+        /* apply-font-to-all button */
+        .apply-font-all {
+            background: rgba(255, 204, 0, 0.08);
+            border: 1px solid var(--accent);
+            color: var(--text-blue);
+            border-radius: var(--radius-md);
+            padding: 8px 12px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            min-height: 36px;
+            transition: 0.2s;
+            width: auto;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .apply-font-all:active {
+            background: rgba(255, 204, 0, 0.15);
+            transform: scale(0.96);
+        }
+        .font-action-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .font-action-row .select-all-btn {
+            flex: 0 1 auto;
+        }
+        .font-action-row .apply-font-all {
+            flex: 1 1 auto;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="workspace">
+        <div class="canvas-container" id="canvasContainer">
+            <canvas id="imageCanvas"></canvas>
+        </div>
+    </div>
+
+    <div id="sidebar">
+        <div class="brand-header">
+            <img src="Gemini_Generated_Image_m9ale3m9ale3m9al.png" alt="Bee Logo" class="app-logo">
+            <div class="brand-text">
+                <h2>Payment Method</h2>
+                <div class="hint">Safe payment server from e&</div>
+            </div>
+        </div>
+        
+        <!-- File System Storage Controllers -->
+        <div class="section-card">
+            <h3>Project Architecture</h3>
+            <div class="row">
+                <button id="saveProjectFile" class="secondary" style="font-size: 0.85rem;">Save Project</button>
+                <button id="importProjectFileBtn" class="secondary" style="font-size: 0.85rem;">Import Project</button>
+            </div>
+            <div class="hint" id="fileStatusHint">Working in local temporary memory mode.</div>
+        </div>
+
+        <!-- Media Resource Core -->
+        <div class="section-card">
+            <h3>Background Layer</h3>
+            <div class="file-btn">
+                <button class="primary"> Upload Source Image</button>
+                <input type="file" id="imageLoader" accept="image/*">
+            </div>
+        </div>
+
+        <!-- Typography Controller Core -->
+        <div class="section-card">
+            <h3>Vector Text Engine</h3>
+            <div class="row" style="flex-wrap: wrap; gap: 8px;">
+                <button class="secondary" id="addTextBtn" style="border: 1px dashed var(--accent); color: #ffeb99; flex: 1 1 auto;">+ Text Node</button>
+                <button class="secondary" id="addTimeBtn" style="border: 1px dashed #ffdb4d; color: #ffeb99; flex: 1 1 auto;">System Time</button>
+                <button class="secondary" id="addSumBtn" style="border: 1px dashed #4da6ff; color: #99ccff; flex: 1 1 100%; margin-top: 4px;">+ Sum Formula</button>
+            </div>
+            <!-- Dynamic Custom Font File Uploader Engine Core -->
+            <div class="file-btn" style="margin-top: 4px;">
+                <button class="secondary" style="font-size: 0.85rem; border: 1px dashed var(--text-muted);"> Upload Font File</button>
+                <input type="file" id="fontLoader" accept="*/*">
+            </div>
+        </div>
+
+        <!-- Context Aware Layer Inspector Panel -->
+        <div id="inspector" class="section-card" style="display:none;">
+            <h3>Active Node Properties</h3>
+            <div style="display:flex; flex-direction:column; gap:12px;">
+                
+                <!-- Precision Positioning & Typography Spacing Interface Pad -->
+                <div class="nudge-pad">
+                    <div class="nudge-dpad">
+                        <button class="nudge-btn nudge-up" id="nudgeUpBtn" title="Move Up">
+                            <svg viewBox="0 0 24 24"><path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/></svg>
+                        </button>
+                        <button class="nudge-btn nudge-left" id="nudgeLeftBtn" title="Move Left">
+                            <svg viewBox="0 0 24 24"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z"/></svg>
+                        </button>
+                        <button class="nudge-btn nudge-right" id="nudgeRightBtn" title="Move Right">
+                            <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
+                        </button>
+                        <button class="nudge-btn nudge-down" id="nudgeDownBtn" title="Move Down">
+                            <svg viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
+                        </button>
+                    </div>
+                    <div class="nudge-spacing-bar">
+                        <div class="spacing-control-unit">
+                            <button class="spacing-action-btn" id="decLetterSpacing">-</button>
+                            <span class="spacing-label-icon">➔A➔</span>
+                            <button class="spacing-action-btn" id="incLetterSpacing">+</button>
+                        </div>
+                        <div class="spacing-control-unit">
+                            <button class="spacing-action-btn" id="decLineHeight">-</button>
+                            <span class="spacing-label-icon">⬇A⬆</span>
+                            <button class="spacing-action-btn" id="incLineHeight">+</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label style="font-size:0.75rem; display:block; margin-bottom:4px;">Content Expression</label>
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                        <input type="text" id="layerText" placeholder="Enter text or matrix expression..." style="flex:1;">
+                        <button id="selectAllTextBtn" class="select-all-btn" style="flex: 0 0 auto;">Select All</button>
+                    </div>
+                    <div class="hint" style="margin-top: 5px;">
+                        Use text or expressions like `=TIME()`, `=DATE()`, or `=SUM(A1,A2)`
+                    </div>
+                </div>
+                
+                <div>
+                    <label style="font-size:0.75rem; display:block; margin-bottom:4px;">Creative Font Family</label>
+                    <div class="font-action-row">
+                        <select id="layerFont" style="flex:2;">
+                            <option value="'GE Dinar One', sans-serif" style="font-family: 'GE Dinar One', sans-serif; font-weight: bold;">GE Dinar One Bold</option>
+                            <option value="'Cairo', sans-serif" style="font-family: 'Cairo', sans-serif; font-weight: 900;">Cairo Black (900)</option>
+                            <option value="'Lalezar', display" style="font-family: 'Lalezar', display;">Lalezar (Ultra Bold Display)</option>
+                            <option value="'El Messiri', serif" style="font-family: 'El Messiri', serif; font-weight: 700;">El Messiri Extra Bold</option>
+                            <option value="'Changa', sans-serif" style="font-family: 'Changa', sans-serif; font-weight: 900;">Changa Black (900)</option>
+                            <option value="'Vazirmatn', sans-serif" style="font-family: 'Vazirmatn', sans-serif; font-weight: 900;">Vazirmatn Black (900)</option>
+                            <option value="'Tajawal', sans-serif" style="font-family: 'Tajawal', sans-serif; font-weight: 900;">Tajawal Black (900)</option>
+                            <option value="'Noto Sans Arabic', sans-serif" style="font-family: 'Noto Sans Arabic', sans-serif; font-weight: 900;">Noto Sans Arabic Black (900)</option>
+                            <option value="'Al Majeed Quranic Font', serif" style="font-family: 'Al Majeed Quranic Font', serif;">Al Majeed Quranic Font</option>
+                            <option value="'Guesswhat Exceptional', sans-serif" style="font-family: 'Guesswhat Exceptional', sans-serif;">Guesswhat Exceptional</option>
+                            <option value="'Aa Typo round Point', sans-serif" style="font-family: 'Aa Typo round Point', sans-serif;">Aa Typo round Point</option>
+                            <option value="'Aa Typo squared Point', sans-serif" style="font-family: 'Aa Typo squared Point', sans-serif;">Aa Typo squared Point</option>
+                            <option value="Inter, system-ui, sans-serif" style="font-family: sans-serif;">Inter (Modern Minimalist)</option>
+                            <option value="'Helvetica Neue', Helvetica, Arial, sans-serif" style="font-family: sans-serif;">Helvetica Pro (Clean Swiss)</option>
+                            <option value="Cairo, 'Segoe UI', Tahoma, sans-serif" style="font-family: sans-serif; font-weight: normal;">Cairo (Modern Sans-Serif)</option>
+                            <option value="Cairo, 'Segoe UI', Tahoma, sans-serif" style="font-family: sans-serif; font-weight: 500;">Cairo Medium</option>
+                            <option value="Cairo, 'Segoe UI', Tahoma, sans-serif" style="font-family: sans-serif; font-weight: bold;">Cairo Bold</option>
+                            <option value="Tajawal, 'Segoe UI', Arial, sans-serif" style="font-family: sans-serif; font-weight: normal;">Tajawal (Geometric)</option>
+                            <option value="Tajawal, 'Segoe UI', Arial, sans-serif" style="font-family: sans-serif; font-weight: 500;">Tajawal Medium</option>
+                            <option value="Tajawal, 'Segoe UI', Arial, sans-serif" style="font-family: sans-serif; font-weight: bold;">Tajawal Bold</option>
+                            <option value="Amiri, 'Times New Roman', serif" style="font-family: serif; font-weight: normal;">Amiri (Classic Naskh)</option>
+                            <option value="Amiri, 'Times New Roman', serif" style="font-family: serif; font-weight: bold;">Amiri Bold</option>
+                            <option value="Almarai, 'Helvetica Neue', Arial, sans-serif" style="font-family: sans-serif; font-weight: normal;">Almarai (Corporate)</option>
+                            <option value="Almarai, 'Helvetica Neue', Arial, sans-serif" style="font-family: sans-serif; font-weight: bold;">Almarai Bold</option>
+                            <option value="'Dubai', 'Segoe UI', Tahoma, sans-serif" style="font-family: sans-serif; font-weight: normal;">Dubai Font Regular</option>
+                            <option value="'Dubai', 'Segoe UI', Tahoma, sans-serif; font-weight: 500;">Dubai Font Medium</option>
+                            <option value="'Dubai', 'Segoe UI', Tahoma, sans-serif; font-weight: bold;">Dubai Font Bold</option>
+                            <option value="'El Messiri', 'Traditional Arabic', serif" style="font-family: serif; font-weight: bold;">El Messiri Bold</option>
+                            <option value="'Simplified Arabic', Tahoma, sans-serif" style="font-family: sans-serif; font-weight: bold;">Simplified Arabic Bold</option>
+                            <option value="'Traditional Arabic', Times, serif" style="font-family: serif; font-weight: bold;">Traditional Arabic Bold</option>
+                            <option value="Didot, 'Bodoni MT', 'Times New Roman', serif" style="font-family: serif;">Didot (High-Fashion Elegant)</option>
+                            <option value="Georgia, serif" style="font-family: Georgia, serif;">Georgia Editorial (Classic Serif)</option>
+                            <option value="'Impact', 'Arial Black', sans-serif" style="font-family: Impact, sans-serif;">Impact (Bold Streetwear)</option>
+                            <option value="'Trebuchet MS', sans-serif" style="font-family: 'Trebuchet MS', sans-serif;">Futura-Style Geometric</option>
+                            <option value="'Courier New', Courier, monospace" style="font-family: monospace;">Cyberpunk Tech (Typewriter)</option>
+                            <option value="Consolas, 'Lucida Console', monospace" style="font-family: monospace;">Dev Console (Clean Code)</option>
+                        </select>
+                        <button id="applyFontToAllBtn" class="apply-font-all" title="Apply selected font to all layers">↻ Apply to All</button>
+                    </div>
+                </div>
+
+                <div>
+                    <label style="font-size:0.75rem; display:block; margin-bottom:4px;">Size (px)</label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="range" id="layerSizeSlider" min="10" max="250" value="40" style="flex: 1;">
+                        <input type="number" id="layerSize" value="40" style="width: 75px;">
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 8px;">
+                    <div style="flex: 1.5;">
+                        <label style="font-size:0.75rem; display:block; margin-bottom:4px;">Font Color</label>
+                        <input type="color" id="layerColor" value="#000000">
+                    </div>
+                    <div style="flex: 1.5;">
+                        <label style="font-size:0.75rem; display:block; margin-bottom:4px;">Bg Color</label>
+                        <input type="color" id="layerBgColor" value="#000000">
+                    </div>
+                </div>
+                
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <input type="checkbox" id="useBoldText" style="width:20px; height:20px; margin:0; cursor:pointer;">
+                        <label for="useBoldText" style="font-size:0.85rem; cursor:pointer; user-select:none; font-weight:bold; color:var(--text-blue);">Bold Text</label>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <input type="checkbox" id="useBgColor" style="width:20px; height:20px; margin:0; cursor:pointer;">
+                        <label for="useBgColor" style="font-size:0.85rem; cursor:pointer; user-select:none;">Enable text background</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Render Priority List View -->
+        <div class="section-card">
+            <h3>Calculated Matrix Layers</h3>
+            <div id="layersList"></div>
+        </div>
+
+        <!-- Output Burner Controllers -->
+        <div class="section-card" style="margin-top:auto; padding-bottom: 24px;">
+            <h3>Master Render Export</h3>
+            <div class="row">
+                <button id="exportPng" class="secondary">PNG</button>
+                <button id="exportJpg" class="primary">JPEG Master</button>
+            </div>
+            <button id="shareImageBtn" class="secondary" style="margin-top: 8px;">Share Image</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('imageCanvas');
+        const ctx = canvas.getContext('2d', { alpha: false }); // CPU optimization hint for non-transparent canvas
+        const container = document.getElementById('canvasContainer');
+
+        // --- Android & Touch Movement Multipliers ---
+        const isAndroid = /Android/i.test(navigator.userAgent);
+        const touchSpeedMultiplier = isAndroid ? 1.8 : 1.2; 
+
+        let lastTouchX = 0;
+        let lastTouchY = 0;
+        let rafPending = false; // Throttling touch updates via GPU Frame Render Loop
+        let saveTimeout = null;
+        
+        let project = {
+            bgImage: null,
+            layers: [] 
+        };
+        
+        let selectedLayerId = null;
+        let isDragging = false;
+        let dragTarget = null;
+        let startX, startY;
+        let baseImgObj = new Image();
+        
+        let projectFileHandle = null;
+        let lastUploadedFontName = null;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const saved = localStorage.getItem('formula_photo_studio_v4');
+            if (saved) {
+                loadProjectFromData(saved);
+            } else {
+                renderCanvas();
+            }
+            
+            // Smart CPU timer: Stops background CPU execution when app hidden or missing time node
+            setInterval(() => {
+                if (document.hidden) return; 
+                const hasTimeFormula = project.layers.some(l => l.text && l.text.toUpperCase().includes('TIME('));
+                if (hasTimeFormula) {
+                    updateAllFormulas();
+                }
+            }, 1000);
+        });
+
+        // Debounced save preventing massive base64 JSON stringify disk locks on Android
+        function saveProject() {
+            clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(() => {
+                try {
+                    localStorage.setItem('formula_photo_studio_v4', JSON.stringify(project));
+                } catch(e) {
+                    console.error("Local storage sync error:", e);
+                }
+            }, 300);
+        }
+
+        function loadProjectFromData(jsonString) {
+            try {
+                project = JSON.parse(jsonString);
+                document.getElementById('inspector').style.display = 'none';
+                selectedLayerId = null;
+                
+                if (project.bgImage) {
+                    baseImgObj.src = project.bgImage;
+                    baseImgObj.onload = () => {
+                        renderCanvas();
+                        rebuildHTMLLayers();
+                        updateAllFormulas();
+                    };
+                } else {
+                    renderCanvas();
+                    rebuildHTMLLayers();
+                    updateAllFormulas();
+                }
+            } catch(e) { 
+                alert("Error reading project architecture.");
+                console.error(e); 
+            }
+        }
+
+        document.getElementById('saveProjectFile').addEventListener('click', async () => {
+            if (window.showOpenFilePicker && projectFileHandle) {
+                try {
+                    const options = { mode: 'readwrite' };
+                    if (await projectFileHandle.queryPermission(options) !== 'granted') {
+                        if (await projectFileHandle.requestPermission(options) !== 'granted') {
+                            throw new Error("Write access authorization rejected.");
+                        }
+                    }
+                    const writable = await projectFileHandle.createWritable();
+                    await writable.write(JSON.stringify(project, null, 2));
+                    await writable.close();
+                    
+                    const statusHint = document.getElementById('fileStatusHint');
+                    statusHint.innerText = `Saved directly into: ${projectFileHandle.name}`;
+                    statusHint.style.color = 'var(--text-blue)';
+                    return;
+                } catch (err) {
+                    console.warn("Direct file write aborted. Using download fallback.", err);
+                }
+            }
+
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(project));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `studio_project_${Date.now()}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        });
+
+        document.getElementById('importProjectFileBtn').addEventListener('click', async () => {
+            if (window.showOpenFilePicker) {
+                try {
+                    const [handle] = await window.showOpenFilePicker({
+                        types: [{
+                            description: 'Studio Project File (.json)',
+                            accept: { 'application/json': ['.json'] }
+                        }],
+                        multiple: false
+                    });
+                    projectFileHandle = handle;
+                    const file = await handle.getFile();
+                    const text = await file.text();
+                    
+                    loadProjectFromData(text);
+                    saveProject();
+                    
+                    const statusHint = document.getElementById('fileStatusHint');
+                    statusHint.innerText = `Linked file: ${handle.name}`;
+                    statusHint.style.color = '#5cd65c';
+                    return;
+                } catch (err) {
+                    console.warn("Modern File Picker cancelled or unsupported.", err);
+                }
+            }
+
+            const inputFallback = document.createElement('input');
+            inputFallback.type = 'file';
+            inputFallback.accept = '.json';
+            inputFallback.onchange = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    loadProjectFromData(event.target.result);
+                    saveProject();
+                    document.getElementById('fileStatusHint').innerText = "Imported standard data file matrix.";
+                };
+                reader.readAsText(file);
+            };
+            inputFallback.click();
+        });
+
+        document.getElementById('imageLoader').addEventListener('change', (e) => {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                project.bgImage = event.target.result;
+                baseImgObj.src = event.target.result;
+                baseImgObj.onload = () => {
+                    renderCanvas();
+                    rebuildHTMLLayers();
+                    updateAllFormulas();
+                    saveProject();
+                };
+            };
+            if(e.target.files[0]) reader.readAsDataURL(e.target.files[0]);
+        });
+
+        document.getElementById('fontLoader').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const fontName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+            lastUploadedFontName = fontName;
+            const reader = new FileReader();
+
+            reader.onload = function(event) {
+                const fontDataUrl = event.target.result;
+                const customFont = new FontFace(fontName, `url(${fontDataUrl})`);
+                
+                customFont.load().then((loadedFont) => {
+                    document.fonts.add(loadedFont);
+                    
+                    const selectEl = document.getElementById('layerFont');
+                    const opt = document.createElement('option');
+                    opt.value = `"${fontName}", sans-serif`;
+                    opt.style.fontFamily = `"${fontName}"`;
+                    opt.innerText = `${fontName} (Uploaded)`;
+                    selectEl.appendChild(opt);
+                    
+                    if (selectedLayerId) {
+                        selectEl.value = opt.value;
+                        triggerInspectorInput();
+                    }
+                    
+                    updateAllFormulas();
+                }).catch(err => {
+                    alert("Unable to parse font structure configuration.");
+                    console.error(err);
+                });
+            };
+            reader.readAsDataURL(file);
+        });
+
+        function renderCanvas() {
+            if (project.bgImage && baseImgObj.width) {
+                canvas.width = baseImgObj.width;
+                canvas.height = baseImgObj.height;
+                ctx.drawImage(baseImgObj, 0, 0);
+            } else {
+                canvas.width = 1080;
+                canvas.height = 1080;
+                ctx.fillStyle = "#11110e";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                ctx.strokeStyle = "rgba(255,204,0,0.02)";
+                ctx.lineWidth = 2;
+                for(let x=0; x<canvas.width; x+=80) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke(); }
+                for(let y=0; y<canvas.height; y+=80) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke(); }
+
+                ctx.fillStyle = "#FFCC00";
+                ctx.font = "bold 28px -apple-system, sans-serif";
+                ctx.textAlign = "center";
+                ctx.fillText("Formula Graphic Core Active", canvas.width/2, canvas.height/2 - 20);
+                ctx.fillStyle = "#616155";
+                ctx.font = "18px -apple-system, sans-serif";
+                ctx.fillText("Upload background image to start structural configuration", canvas.width/2, canvas.height/2 + 20);
+            }
+        }
+
+        function parseFormula(text) {
+            if (!text || !text.startsWith('=')) return text;
+            let formula = text.slice(1).toUpperCase().trim();
+
+            if (formula === 'TIME()') {
+                const now = new Date();
+                return now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            }
+            if (formula === 'DATE()') {
+                const now = new Date();
+                return `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}`;
+            }
+            
+            if (formula.startsWith('SUM(') && formula.endsWith(')')) {
+                const inside = formula.slice(4, -1).replace(/\s+/g, '');
+                if (!inside) return "0";
+                
+                const targets = inside.split(',');
+                let totalSum = 0;
+
+                targets.forEach(target => {
+                    if (target.startsWith('A')) {
+                        const targetIdx = parseInt(target.substring(1)) - 1;
+                        if (targetIdx >= 0 && targetIdx < project.layers.length) {
+                            const rawVal = parseFormula(project.layers[targetIdx].text);
+                            const matches = rawVal.match(/[-+]?[0-9]*\.?[0-9]+/g);
+                            if (matches) {
+                                matches.forEach(num => totalSum += parseFloat(num));
+                            }
+                        }
+                    } else {
+                        const parsedFloat = parseFloat(target);
+                        if (!isNaN(parsedFloat)) totalSum += parsedFloat;
+                    }
+                });
+
+                return totalSum.toString();
+            }
+
+            return "[Syntax Error]";
+        }
+
+        document.getElementById('addTextBtn').addEventListener('click', () => addNewLayer('150'));
+        document.getElementById('addTimeBtn').addEventListener('click', () => addNewLayer('=TIME()'));
+        document.getElementById('addSumBtn').addEventListener('click', () => addNewLayer('=SUM(A1)'));
+
+        function addNewLayer(initialText) {
+            const selectEl = document.getElementById('layerFont');
+            const newLayer = {
+                id: 'layer_' + Date.now(),
+                text: initialText, 
+                x: canvas.width / 4,
+                y: canvas.height / 3,
+                size: 50,
+                color: '#FFCC00',
+                bgColor: '#000000',
+                useBg: false,
+                isBold: false,
+                font: selectEl.value,
+                letterSpacing: 0, 
+                lineHeight: 1.2    
+            };
+            project.layers.push(newLayer);
+            createHTMLLayer(newLayer);
+            selectLayer(newLayer.id);
+            saveProject();
+        }
+
+        function createHTMLLayer(layer) {
+            const el = document.createElement('div');
+            el.id = layer.id;
+            el.className = 'text-layer';
+            el.style.color = layer.color;
+            el.style.fontSize = getScaledSize(layer.size) + 'px';
+            el.style.fontFamily = layer.font;
+            el.style.backgroundColor = (layer.useBg) ? layer.bgColor : 'transparent';
+            
+            el.style.letterSpacing = getScaledSize(layer.letterSpacing || 0) + 'px';
+            el.style.lineHeight = (layer.lineHeight || 1.2);
+            
+            if (layer.isBold) el.style.fontWeight = 'bold';
+            
+            el.innerText = parseFormula(layer.text);
+            positionElement(el, layer.x, layer.y);
+
+            const startDrag = (clientX, clientY) => {
+                isDragging = true;
+                dragTarget = layer;
+                document.body.classList.add('dragging-active');
+                selectLayer(layer.id);
+                const rect = canvas.getBoundingClientRect();
+                const scale = canvas.clientWidth / canvas.width;
+                startX = (clientX - rect.left) / scale - layer.x;
+                startY = (clientY - rect.top) / scale - layer.y;
+
+                lastTouchX = clientX;
+                lastTouchY = clientY;
+            };
+
+            el.addEventListener('mousedown', (e) => startDrag(e.clientX, e.clientY));
+            
+            el.addEventListener('touchstart', (e) => {
+                if(e.touches.length === 1) {
+                    startDrag(e.touches[0].clientX, e.touches[0].clientY);
+                }
+            }, { passive: true });
+
+            container.appendChild(el);
+            updateLayersList();
+        }
+
+        // Hardware-Accelerated 3D Transform Translation (GPU Offload)
+        function positionElement(el, x, y) {
+            const scale = canvas.clientWidth / canvas.width;
+            const posX = x * scale;
+            const posY = y * scale;
+            el.style.transform = `translate3d(${posX}px, ${posY}px, 0)`;
+        }
+
+        function getScaledSize(size) {
+            const scale = canvas.clientWidth / canvas.width;
+            return size * scale;
+        }
+
+        function rebuildHTMLLayers() {
+            document.querySelectorAll('.text-layer').forEach(el => el.remove());
+            project.layers.forEach(layer => createHTMLLayer(layer));
+        }
+
+        function updateAllFormulas() {
+            project.layers.forEach(layer => {
+                const el = document.getElementById(layer.id);
+                if (el) el.innerText = parseFormula(layer.text);
+            });
+        }
+
+        const handleMove = (clientX, clientY, isTouch = false) => {
+            if (!isDragging || !dragTarget) return;
+            const rect = canvas.getBoundingClientRect();
+            const scale = canvas.clientWidth / canvas.width;
+            
+            if (isTouch) {
+                const deltaX = ((clientX - lastTouchX) / scale) * touchSpeedMultiplier;
+                const deltaY = ((clientY - lastTouchY) / scale) * touchSpeedMultiplier;
+                
+                dragTarget.x += deltaX;
+                dragTarget.y += deltaY;
+
+                lastTouchX = clientX;
+                lastTouchY = clientY;
+            } else {
+                dragTarget.x = (clientX - rect.left) / scale - startX;
+                dragTarget.y = (clientY - rect.top) / scale - startY;
+            }
+
+            // Sync rendering with Display Refresh Rate using rAF (Eliminates Touch Lag)
+            if (!rafPending) {
+                rafPending = true;
+                requestAnimationFrame(() => {
+                    const el = document.getElementById(dragTarget.id);
+                    if(el) positionElement(el, dragTarget.x, dragTarget.y);
+                    rafPending = false;
+                });
+            }
+        };
+
+        window.addEventListener('mousemove', (e) => handleMove(e.clientX, e.clientY, false));
+        window.addEventListener('touchmove', (e) => {
+            if(isDragging && e.touches.length === 1) {
+                handleMove(e.touches[0].clientX, e.touches[0].clientY, true);
+            }
+        }, { passive: true });
+
+        const endDrag = () => {
+            if(isDragging) {
+                isDragging = false;
+                document.body.classList.remove('dragging-active');
+                saveProject();
+            }
+        };
+        window.addEventListener('mouseup', endDrag);
+        window.addEventListener('touchend', endDrag);
+
+        window.addEventListener('resize', () => {
+            project.layers.forEach(layer => {
+                const el = document.getElementById(layer.id);
+                if(el) {
+                    positionElement(el, layer.x, layer.y);
+                    el.style.fontSize = getScaledSize(layer.size) + 'px';
+                    el.style.letterSpacing = getScaledSize(layer.letterSpacing || 0) + 'px';
+                }
+            });
+        });
+
+        function selectLayer(id) {
+            selectedLayerId = id;
+            document.querySelectorAll('.text-layer').forEach(el => el.classList.remove('active'));
+            
+            const el = document.getElementById(id);
+            if(el) el.classList.add('active');
+
+            const layer = project.layers.find(l => l.id === id);
+            if (layer) {
+                const textInput = document.getElementById('layerText');
+                document.getElementById('inspector').style.display = 'block';
+                textInput.value = layer.text;
+                textInput.style.fontFamily = layer.font;
+                textInput.style.fontWeight = layer.isBold ? 'bold' : 'normal';
+                document.getElementById('layerSize').value = layer.size;
+                document.getElementById('layerSizeSlider').value = layer.size;
+                document.getElementById('layerColor').value = layer.color;
+                document.getElementById('layerBgColor').value = layer.bgColor || '#000000';
+                document.getElementById('useBgColor').checked = !!layer.useBg;
+                document.getElementById('useBoldText').checked = !!layer.isBold;
+                document.getElementById('layerFont').value = layer.font;
+                
+                if(layer.letterSpacing === undefined) layer.letterSpacing = 0;
+                if(layer.lineHeight === undefined) layer.lineHeight = 1.2;
+            }
+            updateLayersList();
+        }
+
+        document.getElementById('layerSizeSlider').addEventListener('input', (e) => {
+            document.getElementById('layerSize').value = e.target.value;
+            triggerInspectorInput();
+        });
+
+        document.getElementById('layerSize').addEventListener('input', (e) => {
+            document.getElementById('layerSizeSlider').value = e.target.value;
+            triggerInspectorInput();
+        });
+
+        function triggerInspectorInput() {
+            document.getElementById('layerText').dispatchEvent(new Event('input'));
+        }
+
+        const updateActiveLayerProps = () => {
+            if (!selectedLayerId) return;
+            const layer = project.layers.find(l => l.id === selectedLayerId);
+            const el = document.getElementById(selectedLayerId);
+            const textInput = document.getElementById('layerText');
+            
+            if (layer && el) {
+                layer.text = textInput.value;
+                layer.size = parseInt(document.getElementById('layerSize').value) || 20;
+                layer.color = document.getElementById('layerColor').value;
+                layer.bgColor = document.getElementById('layerBgColor').value;
+                layer.useBg = document.getElementById('useBgColor').checked;
+                layer.isBold = document.getElementById('useBoldText').checked;
+                layer.font = document.getElementById('layerFont').value;
+
+                textInput.style.fontFamily = layer.font;
+                textInput.style.fontWeight = layer.isBold ? 'bold' : 'normal';
+
+                el.style.color = layer.color;
+                el.style.fontSize = getScaledSize(layer.size) + 'px';
+                el.style.fontFamily = layer.font;
+                el.style.backgroundColor = layer.useBg ? layer.bgColor : 'transparent';
+                el.style.fontWeight = layer.isBold ? 'bold' : 'normal';
+                el.style.letterSpacing = getScaledSize(layer.letterSpacing || 0) + 'px';
+                
+                updateAllFormulas(); 
+                saveProject();
+            }
+        };
+
+        // Optimized event listening logic (Removed redundant double-triggers)
+        ['layerText', 'layerSize', 'layerColor', 'layerBgColor', 'useBgColor', 'useBoldText', 'layerFont'].forEach(inputId => {
+            const targetEl = document.getElementById(inputId);
+            targetEl.addEventListener('input', updateActiveLayerProps);
+            targetEl.addEventListener('change', updateActiveLayerProps);
+        });
+
+        function nudgeActiveLayer(dx, dy) {
+            if (!selectedLayerId) return;
+            const layer = project.layers.find(l => l.id === selectedLayerId);
+            const el = document.getElementById(selectedLayerId);
+            if(layer && el) {
+                const stepMultiplier = isAndroid ? 5 : 1;
+                layer.x += dx * stepMultiplier;
+                layer.y += dy * stepMultiplier;
+                positionElement(el, layer.x, layer.y);
+                saveProject();
+            }
+        }
+
+        document.getElementById('nudgeUpBtn').addEventListener('click', () => nudgeActiveLayer(0, -1));
+        document.getElementById('nudgeDownBtn').addEventListener('click', () => nudgeActiveLayer(0, 1));
+        document.getElementById('nudgeLeftBtn').addEventListener('click', () => nudgeActiveLayer(-1, 0));
+        document.getElementById('nudgeRightBtn').addEventListener('click', () => nudgeActiveLayer(1, 0));
+
+        document.getElementById('incLetterSpacing').addEventListener('click', () => {
+            if (!selectedLayerId) return;
+            const layer = project.layers.find(l => l.id === selectedLayerId);
+            const el = document.getElementById(selectedLayerId);
+            if(layer && el) {
+                layer.letterSpacing = (layer.letterSpacing || 0) + 1;
+                el.style.letterSpacing = getScaledSize(layer.letterSpacing) + 'px';
+                saveProject();
+            }
+        });
+        document.getElementById('decLetterSpacing').addEventListener('click', () => {
+            if (!selectedLayerId) return;
+            const layer = project.layers.find(l => l.id === selectedLayerId);
+            const el = document.getElementById(selectedLayerId);
+            if(layer && el) {
+                layer.letterSpacing = (layer.letterSpacing || 0) - 1;
+                el.style.letterSpacing = getScaledSize(layer.letterSpacing) + 'px';
+                saveProject();
+            }
+        });
+
+        document.getElementById('incLineHeight').addEventListener('click', () => {
+            if (!selectedLayerId) return;
+            const layer = project.layers.find(l => l.id === selectedLayerId);
+            const el = document.getElementById(selectedLayerId);
+            if(layer && el) {
+                layer.lineHeight = parseFloat(((layer.lineHeight || 1.2) + 0.05).toFixed(2));
+                el.style.lineHeight = layer.lineHeight;
+                saveProject();
+            }
+        });
+        document.getElementById('decLineHeight').addEventListener('click', () => {
+            if (!selectedLayerId) return;
+            const layer = project.layers.find(l => l.id === selectedLayerId);
+            const el = document.getElementById(selectedLayerId);
+            if(layer && el) {
+                layer.lineHeight = parseFloat(((layer.lineHeight || 1.2) - 0.05).toFixed(2));
+                el.style.lineHeight = layer.lineHeight;
+                saveProject();
+            }
+        });
+
+        function deleteLayer(id, e) {
+            e.stopPropagation();
+            project.layers = project.layers.filter(l => l.id !== id);
+            const el = document.getElementById(id);
+            if(el) el.remove();
+            if(selectedLayerId === id) {
+                document.getElementById('inspector').style.display = 'none';
+                selectedLayerId = null;
+            }
+            updateAllFormulas();
+            updateLayersList();
+            saveProject();
+        }
+
+        function updateLayersList() {
+            const container = document.getElementById('layersList');
+            container.innerHTML = '';
+            project.layers.forEach((layer, idx) => {
+                const item = document.createElement('div');
+                item.className = `layer-item ${layer.id === selectedLayerId ? 'active' : ''}`;
+                item.onclick = () => selectLayer(layer.id);
+                
+                const displayTitle = layer.text.length > 12 ? layer.text.slice(0, 12) + '...' : layer.text;
+                item.innerHTML = `
+                    <div>
+                        <span class="layer-ref">A${idx + 1}</span>
+                        <span style="font-family: ${layer.font}; ${layer.isBold ? 'font-weight: bold;' : ''}">${displayTitle.startsWith('=') ? 'ƒ' : displayTitle}</span>
+                    </div>
+                    <button class="delete-btn" onclick="deleteLayer('${layer.id}', event)">✕</button>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function flattenAndDownload(format) {
+            renderCanvas();
+            project.layers.forEach(layer => {
+                const finalStr = parseFormula(layer.text).toString();
+                ctx.font = `${layer.isBold ? 'bold' : 'normal'} ${layer.size}px ${layer.font}`;
+                ctx.textBaseline = "top";
+                ctx.textAlign = "left";
+
+                const textMetrics = ctx.measureText(finalStr);
+                const textWidth = textMetrics.width;
+
+                if(layer.useBg) {
+                    ctx.fillStyle = layer.bgColor;
+                    ctx.fillRect(layer.x, layer.y, textWidth, layer.size);
+                }
+
+                ctx.fillStyle = layer.color;
+                
+                if(layer.letterSpacing && layer.letterSpacing !== 0) {
+                    let currentX = layer.x;
+                    for(let i=0; i<finalStr.length; i++) {
+                        const char = finalStr[i];
+                        ctx.fillText(char, currentX, layer.y);
+                        currentX += ctx.measureText(char).width + layer.letterSpacing;
+                    }
+                } else {
+                    ctx.fillText(finalStr, layer.x, layer.y);
+                }
+            });
+
+            const mime = format === 'jpg' ? 'image/jpeg' : 'image/png';
+            const link = document.createElement('a');
+            link.download = `studio_render_${Date.now()}.${format}`;
+            link.href = canvas.toDataURL(mime, 0.95);
+            link.click();
+            renderCanvas();
+        }
+
+        async function shareImage() {
+            renderCanvas();
+            project.layers.forEach(layer => {
+                const finalStr = parseFormula(layer.text).toString();
+                ctx.font = `${layer.isBold ? 'bold' : 'normal'} ${layer.size}px ${layer.font}`;
+                ctx.textBaseline = "top";
+                ctx.textAlign = "left";
+
+                const textMetrics = ctx.measureText(finalStr);
+                const textWidth = textMetrics.width;
+
+                if(layer.useBg) {
+                    ctx.fillStyle = layer.bgColor;
+                    ctx.fillRect(layer.x, layer.y, textWidth, layer.size);
+                }
+
+                ctx.fillStyle = layer.color;
+                
+                if(layer.letterSpacing && layer.letterSpacing !== 0) {
+                    let currentX = layer.x;
+                    for(let i=0; i<finalStr.length; i++) {
+                        const char = finalStr[i];
+                        ctx.fillText(char, currentX, layer.y);
+                        currentX += ctx.measureText(char).width + layer.letterSpacing;
+                    }
+                } else {
+                    ctx.fillText(finalStr, layer.x, layer.y);
+                }
+            });
+
+            canvas.toBlob(async (blob) => {
+                renderCanvas();
+                if (!blob) return;
+                const file = new File([blob], `studio_render_${Date.now()}.png`, { type: 'image/png' });
+
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    try {
+                        await navigator.share({
+                            files: [file],
+                            title: 'Shared Image',
+                            text: 'Check out this image generated with Bee Project.'
+                        });
+                    } catch (err) {
+                        if (err.name !== 'AbortError') {
+                            console.error('Sharing failed:', err);
+                        }
+                    }
+                } else {
+                    const link = document.createElement('a');
+                    link.download = file.name;
+                    link.href = URL.createObjectURL(blob);
+                    link.click();
+                    URL.revokeObjectURL(link.href);
+                }
+            }, 'image/png', 0.95);
+        }
+
+        document.getElementById('exportPng').addEventListener('click', () => flattenAndDownload('png'));
+        document.getElementById('exportJpg').addEventListener('click', () => flattenAndDownload('jpg'));
+        document.getElementById('shareImageBtn').addEventListener('click', shareImage);
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').catch(err => console.log(err));
+            });
+        }
+
+        const handleSelectAll = function(e) {
+            if (e) e.preventDefault();
+            const textInput = document.getElementById('layerText');
+            textInput.focus();
+            setTimeout(() => {
+                textInput.setSelectionRange(0, textInput.value.length);
+            }, 50);
+            
+            if (lastUploadedFontName) {
+                const fontSelect = document.getElementById('layerFont');
+                const options = fontSelect.options;
+                for (let i = 0; i < options.length; i++) {
+                    if (options[i].text.includes(lastUploadedFontName)) {
+                        fontSelect.selectedIndex = i;
+                        fontSelect.dispatchEvent(new Event('change'));
+                        break;
+                    }
+                }
+            }
+        };
+
+        const selectAllBtn = document.getElementById('selectAllTextBtn');
+        selectAllBtn.addEventListener('click', handleSelectAll);
+        selectAllBtn.addEventListener('touchend', handleSelectAll);
+
+        document.getElementById('applyFontToAllBtn').addEventListener('click', function() {
+            const fontSelect = document.getElementById('layerFont');
+            const selectedFont = fontSelect.value;
+            if (!selectedFont) return;
+
+            project.layers.forEach(layer => {
+                layer.font = selectedFont;
+                const el = document.getElementById(layer.id);
+                if (el) {
+                    el.style.fontFamily = selectedFont;
+                }
+            });
+
+            if (selectedLayerId) {
+                const layer = project.layers.find(l => l.id === selectedLayerId);
+                if (layer) {
+                    layer.font = selectedFont;
+                    const el = document.getElementById(selectedLayerId);
+                    if (el) el.style.fontFamily = selectedFont;
+                    
+                    const textInput = document.getElementById('layerText');
+                    textInput.style.fontFamily = selectedFont;
+                }
+            }
+
+            saveProject();
+            updateLayersList();
+            const btn = this;
+            const origText = btn.innerText;
+            btn.innerText = '✓ Applied!';
+            setTimeout(() => { btn.innerText = origText; }, 1200);
+        });
+    </script>
+</body>
+</html>
