@@ -1,0 +1,16 @@
+{
+  "name": "Bee Project",
+  "short_name": "BeeProject",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0c0c0a",
+  "theme_color": "#0c0c0a",
+  "icons": [
+    {
+      "src": "Gemini_Generated_Image_m9ale3m9ale3m9al.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
