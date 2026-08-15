@@ -1148,6 +1148,13 @@
                 
                 if(layer.letterSpacing === undefined) layer.letterSpacing = 0;
                 if(layer.lineHeight === undefined) layer.lineHeight = 1.2;
+
+                // Direct focus & text edit selection on layer pick
+                setTimeout(() => {
+                    textInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    textInput.focus();
+                    textInput.select();
+                }, 50);
             }
             updateLayersList();
         }
