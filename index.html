@@ -6,6 +6,8 @@
     <title>Bee Project · Offline Font Sync</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0c0c0a">
+    <!-- Supabase CDN JS SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Extra Bold Arabic Google Fonts import (lightweight) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -724,6 +726,11 @@
     </div>
 
     <script>
+        // Supabase Initialization
+        const SUPABASE_URL = 'https://tzjaizzqlepqimqccdvo.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6amFpenpxbGVwcWltcWNjZHZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc0MDA5MjQsImV4cCI6MjEwMjk3NjkyNH0.cYZt0irAOz4mDFO3gI4bDkLmgbM4ndO8xnP6pR2ayO8';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
         (function(){
             const canvas = document.getElementById('imageCanvas');
             const ctx = canvas.getContext('2d', { alpha: false });
@@ -751,33 +758,38 @@
             let projectFileHandle = null;
             let lastUploadedFontName = null;
 
-            let textHistory = [];
-            const MAX_HISTORY = 200;
-
-            try {
-                const stored = localStorage.getItem('bee_text_history');
-                if (stored) textHistory = JSON.parse(stored);
-            } catch(e) {}
-
-            function saveHistory() {
+            // Save new text entry to Supabase
+            async function saveToSupabase(text) {
+                if (!text || text.startsWith('=')) return;
                 try {
-                    localStorage.setItem('bee_text_history', JSON.stringify(textHistory.slice(0, MAX_HISTORY)));
-                } catch(e) {}
-            }
-
-            function getSuggestions(prefix) {
-                if (!prefix || prefix.length === 0) return [];
-                const lower = prefix.toLowerCase();
-                const matches = textHistory.filter(t => t.toLowerCase().startsWith(lower));
-                const unique = [];
-                const seen = new Set();
-                for (let t of matches) {
-                    if (!seen.has(t)) { seen.add(t); unique.push(t); }
+                    await supabaseClient
+                        .from('layers')
+                        .upsert([{ name: text.trim() }], { onConflict: 'name' });
+                } catch(e) {
+                    console.error("Supabase Save Error:", e);
                 }
-                return unique.slice(0, 8);
             }
 
-            function showSuggestions(suggestions) {
+            // Get Autocomplete Suggestions from Supabase
+            async function getSuggestions(prefix) {
+                if (!prefix || prefix.trim().length === 0) return [];
+                const query = prefix.trim();
+                
+                const { data, error } = await supabaseClient
+                    .from('layers')
+                    .select('name')
+                    .ilike('name', `${query}%`)
+                    .limit(8);
+
+                if (error) {
+                    console.error("Supabase Fetch Error:", error);
+                    return [];
+                }
+                
+                return data.map(item => item.name);
+            }
+
+            async function showSuggestions(suggestions) {
                 const box = document.getElementById('suggestionBox');
                 if (suggestions.length === 0) {
                     box.style.display = 'none';
@@ -787,22 +799,18 @@
                 suggestions.forEach(s => {
                     const div = document.createElement('div');
                     div.textContent = s;
-                    div.addEventListener('mousedown', (e) => {
+                    
+                    const handleSelection = (e) => {
                         e.preventDefault();
                         const input = document.getElementById('layerText');
                         input.value = s;
                         input.dispatchEvent(new Event('input'));
                         box.style.display = 'none';
                         input.focus();
-                    });
-                    div.addEventListener('touchstart', (e) => {
-                        e.preventDefault();
-                        const input = document.getElementById('layerText');
-                        input.value = s;
-                        input.dispatchEvent(new Event('input'));
-                        box.style.display = 'none';
-                        input.focus();
-                    });
+                    };
+
+                    div.addEventListener('mousedown', handleSelection);
+                    div.addEventListener('touchstart', handleSelection);
                     box.appendChild(div);
                 });
                 box.style.display = 'block';
@@ -852,30 +860,16 @@
                             renderCanvas();
                             rebuildHTMLLayers();
                             updateAllFormulas();
-                            rebuildHistoryFromLayers();
                         };
                     } else {
                         renderCanvas();
                         rebuildHTMLLayers();
                         updateAllFormulas();
-                        rebuildHistoryFromLayers();
                     }
                 } catch(e) { 
                     alert("Error reading project architecture.");
                     console.error(e); 
                 }
-            }
-
-            function rebuildHistoryFromLayers() {
-                project.layers.forEach(layer => {
-                    const txt = layer.text;
-                    if (txt && !txt.startsWith('=')) {
-                        if (!textHistory.includes(txt)) {
-                            textHistory.push(txt);
-                        }
-                    }
-                });
-                saveHistory();
             }
 
             document.getElementById('saveProjectFile').addEventListener('click', async () => {
@@ -1095,6 +1089,7 @@
                 createHTMLLayer(newLayer);
                 selectLayer(newLayer.id);
                 saveProject();
+                saveToSupabase(initialText);
             }
 
             function createHTMLLayer(layer) {
@@ -1277,12 +1272,11 @@
                 
                 if (layer && el) {
                     const newText = textInput.value;
+                    
                     if (newText && !newText.startsWith('=')) {
-                        if (!textHistory.includes(newText)) {
-                            textHistory.push(newText);
-                            saveHistory();
-                        }
+                        saveToSupabase(newText);
                     }
+                    
                     layer.text = newText;
                     layer.size = parseInt(document.getElementById('layerSize').value) || 20;
                     layer.color = document.getElementById('layerColor').value;
@@ -1307,24 +1301,24 @@
                 }
             };
 
-            document.getElementById('layerText').addEventListener('input', function(e) {
+            document.getElementById('layerText').addEventListener('input', async function(e) {
                 const val = this.value;
                 if (val.startsWith('=')) {
                     hideSuggestions();
                     return;
                 }
-                const suggestions = getSuggestions(val);
+                const suggestions = await getSuggestions(val);
                 showSuggestions(suggestions);
             });
 
             document.getElementById('layerText').addEventListener('blur', function() {
-                setTimeout(hideSuggestions, 200);
+                setTimeout(hideSuggestions, 250);
             });
 
-            document.getElementById('layerText').addEventListener('focus', function() {
+            document.getElementById('layerText').addEventListener('focus', async function() {
                 const val = this.value;
                 if (!val.startsWith('=')) {
-                    const suggestions = getSuggestions(val);
+                    const suggestions = await getSuggestions(val);
                     showSuggestions(suggestions);
                 }
             });
@@ -1429,9 +1423,7 @@
                 });
             }
 
-            // --- FIXED SHARE: uses canvas.toBlob and Web Share API, falls back to download ---
             async function shareImage() {
-                // Render layers on canvas
                 renderCanvas();
                 project.layers.forEach(layer => {
                     const finalStr = parseFormula(layer.text).toString();
@@ -1461,7 +1453,6 @@
                     }
                 });
 
-                // Get blob and share
                 const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
                 if (!blob) {
                     alert('Could not generate image.');
@@ -1470,7 +1461,6 @@
 
                 const file = new File([blob], `studio_share_${Date.now()}.png`, { type: 'image/png' });
 
-                // Try Web Share API first (Android, iOS)
                 if (navigator.canShare && navigator.canShare({ files: [file] })) {
                     try {
                         await navigator.share({
@@ -1478,7 +1468,7 @@
                             title: 'Bee Project Share',
                             text: 'Shared from Bee Project Studio'
                         });
-                        renderCanvas(); // restore canvas
+                        renderCanvas();
                         return;
                     } catch (err) {
                         if (err.name !== 'AbortError') {
@@ -1490,7 +1480,6 @@
                     }
                 }
 
-                // Fallback: download the file (so user can share manually)
                 const link = document.createElement('a');
                 link.download = file.name;
                 link.href = URL.createObjectURL(blob);
